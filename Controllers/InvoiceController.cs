@@ -3,12 +3,13 @@ using InvoiceMangementApi.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
+using System.Security.Claims;
 
 namespace InvoiceMangementApi.Controllers
 {
+    [Route("api/[controller]")]
     [Authorize]
     [ApiController]
-    [Route("api/[controller]")]
     public class InvoiceController : ControllerBase
     {
         private readonly IInvoiceRepository _repository;
@@ -19,15 +20,27 @@ namespace InvoiceMangementApi.Controllers
             _repository = repository;
             _logger = logger;
         }
-
-        [HttpGet]
-        public async Task<IActionResult> GetAllI()
+        [HttpGet("GetAll")]
+        public async Task<IActionResult> GetAll()
         {
             try
             {
                 _logger.LogInformation("Fetching all invoices.");
+
+                // Example of accessing the user's claims
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;  // e.g., User ID from token
+                var userRole = User.FindFirst(ClaimTypes.Role)?.Value;  // e.g., User role from token
+
+                _logger.LogInformation("User ID: {UserId}, Role: {Role}", userId, userRole);
+
+                // Check if user is authorized, this could be role-based or other custom claims
+                if (userRole != "Admin")
+                {
+                    return Unauthorized("You do not have permission to access this resource.");
+                }
+
                 var invoices = await _repository.GetAllAsync();
-                _logger.LogInformation("Fetched {Count} invoices.", invoices.Count);
+                _logger.LogInformation("Fetched {Count} invoices.", invoices.Count());
                 return Ok(invoices);
             }
             catch (Exception ex)
@@ -36,7 +49,6 @@ namespace InvoiceMangementApi.Controllers
                 return StatusCode(500, "An error occurred while processing your request.");
             }
         }
-
         [HttpGet("{id}")]
         public async Task<IActionResult> GetById(int id)
         {
